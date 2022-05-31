@@ -109,15 +109,12 @@ markkeys <- function(){
   return(p)
 }
 
-
-
-
 p <- markkeys()
-p
+
+
 #pd <- datatable(p,escape = FALSE,rownames= FALSE,selection = 'single', options = list(pageLength = 3))
 
 server3 <- function(input, output) {
-  
   RV <- reactiveValues(data = train2)
   RP <- reactiveValues(data = p)
   
@@ -137,25 +134,16 @@ server3 <- function(input, output) {
   })
   
   keyed <- eventReactive(input$code1,{
+    msb <- ""
     keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
     index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
     absid <- input$table_rows_selected
-    msb <- "Success B-KEY"
-    
-    if(RV$data[index[1],"BIO"] == "B-KEY"){
-      msb <- "Key is already B-KEY"
+    msi <- "Success B-KEY"
+    for(i in index){
+      RV$data[i,"BIO"] <- "B-KEY"
     }
-    ifelse(index == NULL){
-      msb("Word not found, please try again")
-    }
-    else{
-      for(i in index){
-        RV$data[i,"BIO"] <- "B-KEY"
-      }
-      RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
-    }
-    
-    msb
+    RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
+    msi
   })
   
   keyed2 <- eventReactive(input$code2,{
@@ -176,8 +164,6 @@ server3 <- function(input, output) {
   output$key2 <- renderPrint({
     keyed2()
   })
-
-  
   
   output$download <- downloadHandler(
     filename = "BIOFile.csv",
