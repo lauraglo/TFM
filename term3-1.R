@@ -74,9 +74,11 @@ ui3 <- bootstrapPage(
            actionButton("upload", "Upload Data"),
            actionButton("code1", "Assign word as B-KEY"),
            actionButton("code2", "Assign word as I-KEY"),
+           actionButton("code3", "Assign word as O"),
            verbatimTextOutput("selected_text"),
            verbatimTextOutput("key"),
            verbatimTextOutput("key2"),
+           verbatimTextOutput("key3"),
            downloadButton("download","Download train file"),
            DT::dataTableOutput("table2")
            
@@ -138,15 +140,19 @@ server3 <- function(input, output) {
     keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
     index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
     absid <- input$table_rows_selected
-    msi <- "Success B-KEY"
+    msb <- "Success B-KEY"
+    if(index[1]=="B-KEY"){
+    msb <- "Key is already B-KEY"
+    }
     for(i in index){
       RV$data[i,"BIO"] <- "B-KEY"
     }
     RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
-    msi
+    index
   })
   
   keyed2 <- eventReactive(input$code2,{
+    msi <- ""
     keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
     index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
     absid <- input$table_rows_selected
@@ -158,11 +164,31 @@ server3 <- function(input, output) {
     msi
   })
   
+  keyed3 <- eventReactive(input$code3,{
+    mso <- ""
+    keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
+    index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
+    absid <- input$table_rows_selected
+    msb <- "Success removing keyword tag"
+    if(index[1]=="O"){
+      msb <- "Key is already O"
+    }
+    for(i in index){
+      RV$data[i,"BIO"] <- "O"
+    }
+    RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
+    mso
+  })
+  
   output$key <- renderPrint({
     keyed()
   })
   output$key2 <- renderPrint({
     keyed2()
+  })
+  
+  output$key3 <- renderPrint({
+    keyed3()
   })
   
   output$download <- downloadHandler(
@@ -171,8 +197,6 @@ server3 <- function(input, output) {
       write.csv(RV$data, file,row.names = FALSE)
     }
   )
-  
-  
 }
 
 shinyApp(ui = ui3, server = server3)
