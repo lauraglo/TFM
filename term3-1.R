@@ -8,33 +8,17 @@ library(tools)
 library(devtools)
 library(DT)
 
-train <- read.delim("train.txt",header=FALSE, blank.lines.skip = FALSE,col.names = c('Word','BIO'))
-train2<- train
-
 #Cada caracter "nulo" ("") es el fin de un abstract -> introducimos un EOL
-train2$Word <- replace(train$Word, train$Word  == "", "\n\n")
+#train2$Word <- replace(train$Word, train$Word  == "", "\n\n")
 
 # Contar el Nº de abstracts 
-nabs <- length(which(train2$Word == "\n\n"))
-ids <- 1:nabs
+#nabs <- length(which(train2$Word == "\n\n"))
+#ids <- 1:nabs
 
 # Etiquetar con el abstractID
-l <- length(train2$Word)
-vec <- 1:l
-train2$AbstractID <- vec 
-
-temp = 1
-j = 1
-for(i in train2$Word){
-  train2[j, "AbstractID"] <- temp
-  if(i=="\n\n"){
-    temp = temp + 1
-  }
-  if(is.na(i)){
-    break
-  }
-  j = j + 1
-}
+#l <- length(train2$Word)
+#vec <- 1:l
+#train2$AbstractID <- vec 
 
 
 
@@ -57,11 +41,12 @@ document.onmouseup = document.onkeyup = document.onselectionchange = function() 
 '
 
 coded_text <- character(0)
-
 ui3 <- bootstrapPage(
   tags$script(highlight),
   #Fondo blanco al seleccionar fila
-  tags$style(HTML('table.dataTable tr.selected td, table.dataTable td.selected {background-color: pink !important;}')),
+  tags$style(HTML('table.dataTable tr.selected td, 
+                  table.dataTable td.selected 
+                  {background-color: pink !important;}')),
   fluidRow(
     column(8,
            tags$h1("Train file editor for terminology extraction"),
@@ -69,9 +54,12 @@ ui3 <- bootstrapPage(
            #htmlOutput("table")
            DT::dataTableOutput("table")
     ),
-    column(3,
-           tags$h2("File editor"),
-           actionButton("upload", "Upload Data"),
+    sidebarPanel(
+           fileInput("file1", "Choose File",
+                     multiple = FALSE,
+                     accept = c("text/csv",
+                                "text/comma-separated-values,text/plain",
+                                ".csv")),
            actionButton("code1", "Assign word as B-KEY"),
            actionButton("code2", "Assign word as I-KEY"),
            actionButton("code3", "Assign word as O"),
@@ -81,52 +69,163 @@ ui3 <- bootstrapPage(
            verbatimTextOutput("key3"),
            downloadButton("download","Download train file"),
            DT::dataTableOutput("table2")
-           
-    )
-  )
-)
-p <- data.frame(AbstractID = ids, 
-                Abstract = strsplit(do.call(paste, c(train2$Word, list(collapse=","))), "\n\n"), 
-                Ntokens = 0, 
-                NChanges = 0)
-
-colnames(p) = c("ID","Abstract","NTokens","NChanges")
-
-markkeys <- function(){
-  cont=1
-  for(i in train2$Word){
-    if(train2$BIO[cont]=="B-KEY"){
-      train2$Word[cont]<-paste0('<span style="background-color:yellow">',train2$Word[cont],'</span>')
-    }
-    if(train2$BIO[cont]=="I-KEY"){
-      train2$Word[cont]<-paste0('<span style="background-color:#D6EEEE">',train2$Word[cont],'</span>')
-    }
-    cont = cont + 1
-  }
-  p <- data.frame(AbstractID= ids, 
-                  Content = strsplit(do.call(paste, c(train2$Word, list(collapse=","))), "\n\n"), 
-                  Ntokens =  str_count(p$Abstract, '\\s+')+1, 
-                  NChanges = 0)
-  colnames(p) = c("ID","Abstract","NTokens","NChanges")
-  return(p)
-}
-
-p <- markkeys()
-
-
-#pd <- datatable(p,escape = FALSE,rownames= FALSE,selection = 'single', options = list(pageLength = 3))
+    )))
 
 server3 <- function(input, output) {
-  RV <- reactiveValues(data = train2)
-  RP <- reactiveValues(data = p)
   
-  output$table <- DT::renderDataTable(RP$data,selection = "single",escape = FALSE, options = list(pageLength = 3),rownames = FALSE)
+  # -------- Carga y preprocesado del documento --------
+  
+  vals <- reactiveValues(x = NULL)
+  observe({
+    inFile <- input$file1
+    if (is.null(inFile))
+      return(NULL)
+    d <- read.delim(input$file1$datapath,
+                    header=FALSE,
+                    blank.lines.skip = FALSE,
+                    col.names = c('Word','BIO'))
+    d$Word <- replace(d$Word, d$Word  == "", "\n\n")
+    
+    l <- length(d$Word)
+    vec <- 1:l
+    d$AbstractID <- vec 
+    
+    temp = 1
+    cond <- c(FALSE, (d[-nrow(d),1] == "\n\n"))
+    r <- d[,3]
+    for(i in 1:length(d$AbstractID)){
+      r[i] <- temp
+      if (cond[i]){
+        temp = temp + 1
+      }
+    }
+    
+    d[,3]  <- r
+    d_disp <- d
+    nabs <- length(which(d_disp$Word == "\n\n"))
+    ids <- 1:nabs
+    p <- data.frame(AbstractID = ids, 
+                    Content = strsplit(do.call(
+                      paste, c(d_disp$Word, list(collapse=","))), "\n\n"
+                    ), 
+                    Ntokens = 0, 
+                    NChanges = 0)
+    colnames(p) = c("ID","Content","NTokens","NChanges")
+    
+    # ----- Highlight B e I Key ------
+    cont=1
+    for(i in d_disp$Word){
+      if(d_disp$BIO[cont]=="B-KEY"){
+        d_disp$Word[cont]<-paste0(
+          '<span style="background-color:yellow">',d_disp$Word[cont],'</span>'
+        )
+      }
+      if(d_disp$BIO[cont]=="I-KEY"){
+        d_disp$Word[cont]<-paste0(
+          '<span style="background-color:#D6EEEE">',d_disp$Word[cont],'</span>'
+        )
+      }
+      cont = cont + 1
+    }
+    
+    p <- data.frame(AbstractID= ids, 
+                    Content = strsplit(
+                      do.call(paste, c(d_disp$Word, list(collapse=","))), "\n\n"), 
+                    Ntokens =  str_count(p$Content, '\\s+')+1, 
+                    NChanges = 0)
+    colnames(p) = c("ID","Content","NTokens","NChanges")
+    
+    combo <- list(a = d, b = p, c = d_disp)
+    vals$x <- combo
+    
+  })
+  
+  # ------- Mostrar la tabla ------------
   output$table2 = DT::renderDataTable({
-    RV$data
+    DT::datatable(vals$x[['a']],escape = FALSE)
+  })
+  
+  output$table <- DT::renderDataTable({
+    DT::datatable(vals$x[['b']],
+                  selection = "single",
+                  escape = FALSE, 
+                  options = list(pageLength = 3),
+                  rownames = FALSE)
+    }
+  )
+  
+  # ------ Botón B - KEY ----------------
+  observeEvent(input$code1,{
+    msb <- "B-KEY"
+    keyed_text <<- c(vals$x[['a']]$BIO[
+         which(
+           (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
+          )])
+    index <- which(
+        (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
+        arr.ind = TRUE)
+
+    absid <- input$table_rows_selected
+    # if(index[1]=="B-KEY"){
+    #   msb <- "Key is already B-KEY"
+    # }
+    for(i in index){
+      vals$x[['a']]$BIO[i] <- "B-KEY"
+      vals$x[['c']]$Word[i]<-paste0(
+        '<span style="background-color:yellow">',vals$x[['a']]$Word[i],'</span>')
+    }
+    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+  })
+  
+  observeEvent(input$code2,{
+    keyed_text <<- c(vals$x[['a']]$BIO[
+      which(
+        (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
+      )])
+    index <- which(
+      (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
+      arr.ind = TRUE)
+    
+    absid <- input$table_rows_selected
+    # if(index[1]=="B-KEY"){
+    #   msb <- "Key is already B-KEY"
+    # }
+    for(i in index){
+      vals$x[['a']]$BIO[i] <- "I-KEY"
+      vals$x[['c']]$Word[i]<-paste0(
+        '<span style="background-color:#D6EEEE">',vals$x[['a']]$Word[i],'</span>')
+    }
+    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
   })
   
 
-  coded <- eventReactive(input$code1, {
+  observeEvent(input$code3,{
+    keyed_text <<- c(vals$x[['a']]$BIO[
+      which(
+        (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
+      )])
+    index <- which(
+      (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
+      arr.ind = TRUE)
+    
+    absid <- input$table_rows_selected
+    # if(index[1]=="B-KEY"){
+    #   msb <- "Key is already B-KEY"
+    # }
+    for(i in index){
+      vals$x[['a']]$BIO[i] <- "O"
+      vals$x[['c']]$Word[i] <- paste0(vals$x[['a']]$Word[i])
+    }
+    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+  })
+  
+
+
+  
+  coded <- eventReactive(input$code1,{
     coded_text <<- c(coded_text, input$mydata)
     coded_text
   })
@@ -135,66 +234,18 @@ server3 <- function(input, output) {
     coded()
   })
   
-  keyed <- eventReactive(input$code1,{
-    msb <- ""
-    keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
-    index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
-    absid <- input$table_rows_selected
-    msb <- "Success B-KEY"
-    if(index[1]=="B-KEY"){
-    msb <- "Key is already B-KEY"
-    }
-    for(i in index){
-      RV$data[i,"BIO"] <- "B-KEY"
-    }
-    RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
-    index
-  })
   
-  keyed2 <- eventReactive(input$code2,{
-    msi <- ""
-    keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
-    index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
-    absid <- input$table_rows_selected
-    msi <- "Success I-KEY"
-    for(i in index){
-      RV$data[i,"BIO"] <- "I-KEY"
-    }
-    RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
-    msi
-  })
-  
-  keyed3 <- eventReactive(input$code3,{
-    mso <- ""
-    keyed_text <<- c(train2$BIO[which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected))])
-    index <- which((train2$Word == input$mydata)&(train2$AbstractID == input$table_rows_selected) , arr.ind = TRUE)
-    absid <- input$table_rows_selected
-    msb <- "Success removing keyword tag"
-    if(index[1]=="O"){
-      msb <- "Key is already O"
-    }
-    for(i in index){
-      RV$data[i,"BIO"] <- "O"
-    }
-    RP$data[absid,"NChanges"] <- RP$data[absid,"NChanges"]+1
-    mso
-  })
-  
-  output$key <- renderPrint({
-    keyed()
-  })
-  output$key2 <- renderPrint({
-    keyed2()
-  })
-  
-  output$key3 <- renderPrint({
-    keyed3()
-  })
-  
+  # output$key <- renderPrint({
+  #   keyed()
+  # })
+ 
   output$download <- downloadHandler(
-    filename = "BIOFile.csv",
-    content = function(file) {
-      write.csv(RV$data, file,row.names = FALSE)
+    filename = "BIOFile.txt",
+    content = function(filed) {
+      write.table(vals$x[['a']][, c("Word", "BIO")], 
+                filed,
+                row.names = FALSE,
+                col.names = FALSE)
     }
   )
 }
