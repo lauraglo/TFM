@@ -8,20 +8,6 @@ library(tools)
 library(devtools)
 library(DT)
 
-#Cada caracter "nulo" ("") es el fin de un abstract -> introducimos un EOL
-#train2$Word <- replace(train$Word, train$Word  == "", "\n\n")
-
-# Contar el Nº de abstracts 
-#nabs <- length(which(train2$Word == "\n\n"))
-#ids <- 1:nabs
-
-# Etiquetar con el abstractID
-#l <- length(train2$Word)
-#vec <- 1:l
-#train2$AbstractID <- vec 
-
-
-
 highlight <- '
 function getSelectionText() {
   var text = "";
@@ -222,8 +208,6 @@ server3 <- function(input, output) {
     vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
   })
   
-
-
   
   coded <- eventReactive(input$code1,{
     coded_text <<- c(coded_text, input$mydata)
