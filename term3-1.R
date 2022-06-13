@@ -29,7 +29,7 @@ document.onmouseup = document.onkeyup = document.onselectionchange = function() 
 coded_text <- character(0)
 ui3 <- bootstrapPage(
   tags$script(highlight),
-  #Fondo blanco al seleccionar fila
+  #Fondo rosa al seleccionar fila
   tags$style(HTML('table.dataTable tr.selected td, 
                   table.dataTable td.selected 
                   {background-color: pink !important;}')),
@@ -46,22 +46,20 @@ ui3 <- bootstrapPage(
                      accept = c("text/csv",
                                 "text/comma-separated-values,text/plain",
                                 ".csv")),
-           actionButton("code1", "Assign word as B-KEY"),
-           actionButton("code2", "Assign word as I-KEY"),
-           actionButton("code3", "Assign word as O"),
+           actionButton("Bkey", "Assign word as B-KEY"),
+           actionButton("Ikey", "Assign word as I-KEY"),
+           actionButton("Okey", "Assign word as O"),
            verbatimTextOutput("selected_text"),
-           verbatimTextOutput("key"),
-           verbatimTextOutput("key2"),
-           verbatimTextOutput("key3"),
+           verbatimTextOutput("message"),
            downloadButton("download","Download train file"),
            DT::dataTableOutput("table2")
     )))
 
-server3 <- function(input, output) {
+server3 <- function(input, output){
   
   # -------- Carga y preprocesado del documento --------
-  
   vals <- reactiveValues(x = NULL)
+  msg <- reactiveVal()
   observe({
     inFile <- input$file1
     if (is.null(inFile))
@@ -98,7 +96,7 @@ server3 <- function(input, output) {
                     NChanges = 0)
     colnames(p) = c("ID","Content","NTokens","NChanges")
     
-    # ----- Highlight B e I Key ------
+    # ----- Highlight Keys ------
     cont=1
     for(i in d_disp$Word){
       if(d_disp$BIO[cont]=="B-KEY"){
@@ -121,12 +119,16 @@ server3 <- function(input, output) {
                     NChanges = 0)
     colnames(p) = c("ID","Content","NTokens","NChanges")
     
+    # Guardamos los dataframes resultantes en una lista:
+    # A -> Dataframe con los datos, el que se guardará (sin tags html)
+    # B -> Dataframe con los abstracts preprocesados (lo que verá el usuario) 
+    # C -> Dataframe para el display que lleva las etiquetas html (no se descarga)
     combo <- list(a = d, b = p, c = d_disp)
     vals$x <- combo
-    
   })
   
   # ------- Mostrar la tabla ------------
+  # TABLA PROVISIONAL PARA VER LOS CAMBIOS EN EL FICHERO
   output$table2 = DT::renderDataTable({
     DT::datatable(vals$x[['a']],escape = FALSE)
   })
@@ -140,32 +142,43 @@ server3 <- function(input, output) {
     }
   )
   
-  # ------ Botón B - KEY ----------------
-  observeEvent(input$code1,{
-    msb <- "B-KEY"
-    keyed_text <<- c(vals$x[['a']]$BIO[
-         which(
-           (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
+  # ------ BOTÓN B - KEY ----------------
+  observeEvent(input$Bkey,{
+    tryCatch(
+      {
+        keyed_text <<- c(vals$x[['a']]$BIO[
+          which(
+            (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
           )])
-    index <- which(
-        (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
-        arr.ind = TRUE)
-
-    absid <- input$table_rows_selected
-    # if(index[1]=="B-KEY"){
-    #   msb <- "Key is already B-KEY"
-    # }
-    for(i in index){
-      vals$x[['a']]$BIO[i] <- "B-KEY"
-      vals$x[['c']]$Word[i]<-paste0(
-        '<span style="background-color:yellow">',vals$x[['a']]$Word[i],'</span>')
-    }
-    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
-    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+        index <- which(
+          (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
+          arr.ind = TRUE)
+        absid <- input$table_rows_selected
+        if(vals$x[['a']]$BIO[index[1]]=="B-KEY"){
+          msg("Key is already B-KEY")
+        }
+        for(i in index){
+          vals$x[['a']]$BIO[i] <- "B-KEY"
+          vals$x[['c']]$Word[i]<-paste0(
+            '<span style="background-color:yellow">',vals$x[['a']]$Word[i],'</span>'
+          )
+        }
+        vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+        vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+        
+        msg("Success!")
+      },
+      error=function(cond) {
+        msg("ERROR: Word not found, please try again")
+      }
+    ) 
   })
   
-  observeEvent(input$code2,{
-    keyed_text <<- c(vals$x[['a']]$BIO[
+  # -------- BOTÓN I-KEY ---------
+  observeEvent(input$Ikey,{
+    tryCatch(
+    {
+      keyed_text <<- c(vals$x[['a']]$BIO[
       which(
         (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
       )])
@@ -174,20 +187,31 @@ server3 <- function(input, output) {
       arr.ind = TRUE)
     
     absid <- input$table_rows_selected
-    # if(index[1]=="B-KEY"){
-    #   msb <- "Key is already B-KEY"
-    # }
+    previa <- vals$x[['a']]$Word[index[1]-1]
+    if(vals$x[['a']]$BIO[index[1]]=="I-KEY"){
+      msg("Key is already I-KEY")
+    }
     for(i in index){
       vals$x[['a']]$BIO[i] <- "I-KEY"
       vals$x[['c']]$Word[i]<-paste0(
         '<span style="background-color:#D6EEEE">',vals$x[['a']]$Word[i],'</span>')
+      }
+      vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+      vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+      
+      msg(previa)
+    },
+    error=function(cond){
+      msg("ERROR: Word not found, please try again")
     }
-    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
-    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+    ) 
   })
   
-
-  observeEvent(input$code3,{
+  
+  # -------- BOTÓN O-KEY ---------
+  observeEvent(input$Okey,{
+    tryCatch(
+      {
     keyed_text <<- c(vals$x[['a']]$BIO[
       which(
         (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
@@ -197,32 +221,35 @@ server3 <- function(input, output) {
       arr.ind = TRUE)
     
     absid <- input$table_rows_selected
-    # if(index[1]=="B-KEY"){
-    #   msb <- "Key is already B-KEY"
-    # }
     for(i in index){
       vals$x[['a']]$BIO[i] <- "O"
       vals$x[['c']]$Word[i] <- paste0(vals$x[['a']]$Word[i])
     }
     vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
     vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+    
+    msg("Success!")
+    },
+    error=function(cond){
+      msg("ERROR: Word not found, please try again")
+    }
+  ) 
   })
   
-  
-  coded <- eventReactive(input$code1,{
-    coded_text <<- c(coded_text, input$mydata)
-    coded_text
-  })
-  
-  output$selected_text <- renderPrint({
-    coded()
-  })
-  
-  
+  # coded <- eventReactive(input$BKey,{
+  #   coded_text <<- c(coded_text, input$mydata)
+  #   coded_text
+  # })
+  # 
+  # output$selected_text <- renderPrint({
+  #   coded()
+  # })
   # output$key <- renderPrint({
   #   keyed()
   # })
- 
+  output$message <- renderText({
+    msg()
+  })
   output$download <- downloadHandler(
     filename = "BIOFile.txt",
     content = function(filed) {
