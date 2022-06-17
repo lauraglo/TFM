@@ -1,0 +1,1 @@
+Este repositorio contiene todo el código utilizado para desarrollar el Trabajo de Fin de Máster "Un sistema para anotar términos en corpus multilingües", además de los datasets empleados para los experimentos.
