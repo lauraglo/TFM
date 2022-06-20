@@ -1,3 +1,4 @@
+#Librerías necesarias
 library(shiny)
 library(dplyr)
 library(tableHTML)
@@ -7,6 +8,8 @@ library(tidyverse)
 library(tools)
 library(devtools)
 library(DT)
+
+#Función Javascript para marcar el texto
 
 highlight <- '
 function getSelectionText() {
@@ -26,34 +29,46 @@ document.onmouseup = document.onkeyup = document.onselectionchange = function() 
 
 '
 
-coded_text <- character(0)
+# --------- INTERFAZ DE USUARIO ---------------
 ui3 <- bootstrapPage(
   tags$script(highlight),
   #Fondo rosa al seleccionar fila
   tags$style(HTML('table.dataTable tr.selected td, 
                   table.dataTable td.selected 
                   {background-color: pink !important;}')),
-  fluidRow(
-    column(8,
-           tags$h1("Train file editor for terminology extraction"),
-           tags$h3("Abstracts from the train file:"),
-           #htmlOutput("table")
-           DT::dataTableOutput("table")
+  titlePanel("File editor for terminology extraction"),
+  sidebarLayout(
+    sidebarPanel(width = 3, align = "center",
+      fileInput("file1", "Choose File",
+                multiple = FALSE,
+                accept = c("text/csv",
+                           "text/comma-separated-values,text/plain",
+                           ".csv")),
+      tags$hr(),
+      actionButton("Bkey", "Tag word as B-KEY", 
+                   style='width: 150px; background-color: #FDFF82;display:inline-block'),
+      br(),
+      br(),
+      actionButton("Ikey", "Tag word as I-KEY", 
+                   style='width: 150px; background-color: #D6EEEE;display:inline-block'),
+      br(),
+      br(),
+      actionButton("Okey", "Tag word as O",
+                   style='width: 150px'),
+      br(),
+      br(),
+      textOutput("message"),
+      tags$hr(),
+      downloadButton("download","Download file", style='width: 150px'),
+      #DT::dataTableOutput("table2")
     ),
-    sidebarPanel(
-           fileInput("file1", "Choose File",
-                     multiple = FALSE,
-                     accept = c("text/csv",
-                                "text/comma-separated-values,text/plain",
-                                ".csv")),
-           actionButton("Bkey", "Assign word as B-KEY"),
-           actionButton("Ikey", "Assign word as I-KEY"),
-           actionButton("Okey", "Assign word as O"),
-           verbatimTextOutput("selected_text"),
-           verbatimTextOutput("message"),
-           downloadButton("download","Download train file"),
-           DT::dataTableOutput("table2")
-    )))
+  mainPanel(width = 9,
+           DT::dataTableOutput("table")
+    )
+  )
+)
+
+# --------- SERVIDOR ---------------
 
 server3 <- function(input, output){
   
@@ -61,6 +76,8 @@ server3 <- function(input, output){
   vals <- reactiveValues(x = NULL)
   msg <- reactiveVal()
   observe({
+    tryCatch(
+      {
     inFile <- input$file1
     if (is.null(inFile))
       return(NULL)
@@ -68,8 +85,13 @@ server3 <- function(input, output){
                     header=FALSE,
                     blank.lines.skip = FALSE,
                     col.names = c('Word','BIO'))
-    d$Word <- replace(d$Word, d$Word  == "", "\n\n")
+      },
+    error=function(cond){
+      msg("Error in file format")
+    }
+    )
     
+    d$Word <- replace(d$Word, d$Word  == "", "\n\n")
     l <- length(d$Word)
     vec <- 1:l
     d$AbstractID <- vec 
@@ -101,7 +123,7 @@ server3 <- function(input, output){
     for(i in d_disp$Word){
       if(d_disp$BIO[cont]=="B-KEY"){
         d_disp$Word[cont]<-paste0(
-          '<span style="background-color:yellow">',d_disp$Word[cont],'</span>'
+          '<span style="background-color:#FDFF82">',d_disp$Word[cont],'</span>'
         )
       }
       if(d_disp$BIO[cont]=="I-KEY"){
@@ -129,9 +151,9 @@ server3 <- function(input, output){
   
   # ------- Mostrar la tabla ------------
   # TABLA PROVISIONAL PARA VER LOS CAMBIOS EN EL FICHERO
-  output$table2 = DT::renderDataTable({
-    DT::datatable(vals$x[['a']],escape = FALSE)
-  })
+  # output$table2 = DT::renderDataTable({
+  #   DT::datatable(vals$x[['a']],escape = FALSE)
+  # })
   
   output$table <- DT::renderDataTable({
     DT::datatable(vals$x[['b']],
@@ -142,7 +164,7 @@ server3 <- function(input, output){
     }
   )
   
-  # ------ BOTÓN B - KEY ----------------
+  # ------ BOTÓN B-KEY ----------------
   observeEvent(input$Bkey,{
     tryCatch(
       {
@@ -155,18 +177,20 @@ server3 <- function(input, output){
           arr.ind = TRUE)
         absid <- input$table_rows_selected
         if(vals$x[['a']]$BIO[index[1]]=="B-KEY"){
-          msg("Key is already B-KEY")
+          msg("Token already tagged as B-KEY")
         }
-        for(i in index){
-          vals$x[['a']]$BIO[i] <- "B-KEY"
-          vals$x[['c']]$Word[i]<-paste0(
-            '<span style="background-color:yellow">',vals$x[['a']]$Word[i],'</span>'
-          )
+        else{
+          for(i in index){
+            vals$x[['a']]$BIO[i] <- "B-KEY"
+            vals$x[['c']]$Word[i]<-paste0(
+              '<span style="background-color:#FDFF82">',vals$x[['a']]$Word[i],'</span>'
+            )
+          }
+          vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+          vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+          
+          msg("Success!")
         }
-        vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
-        vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
-        
-        msg("Success!")
       },
       error=function(cond) {
         msg("ERROR: Word not found, please try again")
@@ -187,19 +211,22 @@ server3 <- function(input, output){
       arr.ind = TRUE)
     
     absid <- input$table_rows_selected
-    previa <- vals$x[['a']]$Word[index[1]-1]
     if(vals$x[['a']]$BIO[index[1]]=="I-KEY"){
-      msg("Key is already I-KEY")
+      msg("Token already tagged as I-KEY")
     }
-    for(i in index){
-      vals$x[['a']]$BIO[i] <- "I-KEY"
-      vals$x[['c']]$Word[i]<-paste0(
-        '<span style="background-color:#D6EEEE">',vals$x[['a']]$Word[i],'</span>')
+    else{
+      for(i in index){
+        vals$x[['a']]$BIO[i] <- "I-KEY"
+        vals$x[['c']]$Word[i]<-paste0(
+          '<span style="background-color:#D6EEEE">',vals$x[['a']]$Word[i],'</span>')
       }
+      
       vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
       vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
       
-      msg(previa)
+      msg("Success!")
+    }
+    
     },
     error=function(cond){
       msg("ERROR: Word not found, please try again")
@@ -212,23 +239,28 @@ server3 <- function(input, output){
   observeEvent(input$Okey,{
     tryCatch(
       {
-    keyed_text <<- c(vals$x[['a']]$BIO[
+      keyed_text <<- c(vals$x[['a']]$BIO[
       which(
         (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected)
       )])
-    index <- which(
-      (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
-      arr.ind = TRUE)
+      index <- which(
+        (vals$x[['a']]$Word == input$mydata)&(vals$x[['a']]$AbstractID == input$table_rows_selected),
+        arr.ind = TRUE)
     
-    absid <- input$table_rows_selected
-    for(i in index){
-      vals$x[['a']]$BIO[i] <- "O"
-      vals$x[['c']]$Word[i] <- paste0(vals$x[['a']]$Word[i])
-    }
-    vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
-    vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
-    
-    msg("Success!")
+      absid <- input$table_rows_selected
+      if(vals$x[['a']]$BIO[index[1]]=="O"){
+        msg("Token already tagged as O")
+      }
+      else{
+        for(i in index){
+          vals$x[['a']]$BIO[i] <- "O"
+          vals$x[['c']]$Word[i] <- paste0(vals$x[['a']]$Word[i])
+        }
+        vals$x[['b']]$Content[absid] <- strsplit(do.call(paste, c(vals$x[['c']]$Word[vals$x[['c']]$AbstractID == absid], list(collapse=","))), "\n\n") 
+        vals$x[['b']]$NChanges[absid] <- vals$x[['b']]$NChanges[absid] + 1
+        
+        msg("Success!")
+      }
     },
     error=function(cond){
       msg("ERROR: Word not found, please try again")
@@ -236,20 +268,12 @@ server3 <- function(input, output){
   ) 
   })
   
-  # coded <- eventReactive(input$BKey,{
-  #   coded_text <<- c(coded_text, input$mydata)
-  #   coded_text
-  # })
-  # 
-  # output$selected_text <- renderPrint({
-  #   coded()
-  # })
-  # output$key <- renderPrint({
-  #   keyed()
-  # })
+  #Mensaje de feedback al usuario
   output$message <- renderText({
     msg()
   })
+  
+  #Botón de descarga
   output$download <- downloadHandler(
     filename = "BIOFile.txt",
     content = function(filed) {
