@@ -2,7 +2,7 @@ Este repositorio contiene todo el código utilizado para desarrollar el Trabajo 
 A continuación se detallará como ejecutar la aplicación.
 
 Se deben disponer de dos archivos principales:
-- Fichero de entrenamiento: se debe disponer de un dataset que contenga corpus de abstracts con los tokens etiquetados en formato BIO o IOB.
+- Fichero de entrenamiento: se debe disponer de un dataset que contenga corpus de abstracts con los tokens etiquetados en formato BIO o IOB. En este repositorio existen 2 datasets válidos para ejecutar la aplicación, "test.txt" y "train.txt".
 - Código fuente (solamente necesario al ejecutarse en local): El archivo app.R que contiene el código fuente de la app
 
 Una vez dispongamos de estos ficheros, podemos ejecutar la aplicación localmente o en el servidor:
