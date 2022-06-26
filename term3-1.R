@@ -35,7 +35,7 @@ ui3 <- bootstrapPage(
   #Fondo rosa al seleccionar fila
   tags$style(HTML('table.dataTable tr.selected td, 
                   table.dataTable td.selected 
-                  {background-color: pink !important;}')),
+                  {background-color: #FFE7D9 !important;}')),
   titlePanel("File editor for terminology extraction"),
   sidebarLayout(
     sidebarPanel(width = 3, align = "center",
@@ -57,7 +57,8 @@ ui3 <- bootstrapPage(
                    style='width: 150px'),
       br(),
       br(),
-      textOutput("message"),
+      span(textOutput("message"), 
+           style="font-weight: bold; font-size: 14px"),
       tags$hr(),
       downloadButton("download","Download file", style='width: 150px'),
       #DT::dataTableOutput("table2")
@@ -76,20 +77,15 @@ server3 <- function(input, output){
   vals <- reactiveValues(x = NULL)
   msg <- reactiveVal()
   observe({
-    tryCatch(
-      {
     inFile <- input$file1
     if (is.null(inFile))
       return(NULL)
+    tryCatch(
+      {
     d <- read.delim(input$file1$datapath,
                     header=FALSE,
                     blank.lines.skip = FALSE,
                     col.names = c('Word','BIO'))
-      },
-    error=function(cond){
-      msg("Error in file format")
-    }
-    )
     
     d$Word <- replace(d$Word, d$Word  == "", "\n\n")
     l <- length(d$Word)
@@ -117,6 +113,8 @@ server3 <- function(input, output){
                     Ntokens = 0, 
                     NChanges = 0)
     colnames(p) = c("ID","Content","NTokens","NChanges")
+
+ 
     
     # ----- Highlight Keys ------
     cont=1
@@ -147,6 +145,12 @@ server3 <- function(input, output){
     # C -> Dataframe para el display que lleva las etiquetas html (no se descarga)
     combo <- list(a = d, b = p, c = d_disp)
     vals$x <- combo
+    
+    
+      },
+    error=function(cond){
+      msg("Error in file format")
+    })
   })
   
   # ------- Mostrar la tabla ------------
@@ -216,6 +220,7 @@ server3 <- function(input, output){
     }
     else{
       for(i in index){
+        if(vals$x[['a']]$BIO[i]=="I-KEY" || vals$x[['a']]$BIO[i]=="B-KEY")
         vals$x[['a']]$BIO[i] <- "I-KEY"
         vals$x[['c']]$Word[i]<-paste0(
           '<span style="background-color:#D6EEEE">',vals$x[['a']]$Word[i],'</span>')
