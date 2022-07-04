@@ -61,7 +61,7 @@ ui3 <- bootstrapPage(
            style="font-weight: bold; font-size: 14px"),
       tags$hr(),
       downloadButton("download","Download file", style='width: 150px'),
-      DT::dataTableOutput("table2")
+      #DT::dataTableOutput("table2")
     ),
   mainPanel(width = 9,
            DT::dataTableOutput("table")
@@ -155,10 +155,10 @@ server3 <- function(input, output){
   
   # ------- Mostrar la tabla ------------
   #TABLA PROVISIONAL PARA VER LOS CAMBIOS EN EL FICHERO
-  output$table2 = DT::renderDataTable({
-    DT::datatable(vals$x[['a']],escape = FALSE)
-  })
-  
+  # output$table2 = DT::renderDataTable({
+  #   DT::datatable(vals$x[['a']],escape = FALSE)
+  # })
+  # 
   output$table <- DT::renderDataTable({
     DT::datatable(vals$x[['b']],
                   selection = "single",
