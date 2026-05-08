@@ -14,8 +14,6 @@ Una vez dispongamos de estos ficheros, podemos ejecutar la aplicación localment
   
 2. Ejecución en el servidor: Accediendo a la siguiente dirección web se puede lanzar la app https://terminologyeditor.shinyapps.io/TerminologyEditor/ (temporal)
 
-El manuscrito del proyecto, que contiene todos los detalles de la herramienta, estará disponible en la siguiente dirección:
-https://oa.upm.es/view/masters/Ciencia_de_Datos.html
-https://oa.upm.es/72734/
+El manuscrito del proyecto, que contiene todos los detalles de la herramienta, está disponible en: https://oa.upm.es/72734/
 
 
