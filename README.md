@@ -16,5 +16,6 @@ Una vez dispongamos de estos ficheros, podemos ejecutar la aplicación localment
 
 El manuscrito del proyecto, que contiene todos los detalles de la herramienta, estará disponible en la siguiente dirección:
 https://oa.upm.es/view/masters/Ciencia_de_Datos.html
+https://oa.upm.es/72734/
 
 
