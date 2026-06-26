@@ -1,6 +1,6 @@
 ![R](https://img.shields.io/badge/R-4.0+-276DC3?logo=r&logoColor=white)
 ![Shiny](https://img.shields.io/badge/Shiny-1.7+-276DC3)
-![License](https://img.shields.io/badge/license-academic-lightgrey)
+![License](https://img.shields.io/badge/license-CC%20BY--NC--ND%204.0-lightgrey)
 
 # Terminology Editor — Interactive BIO Corpus Annotation Tool
 
@@ -158,3 +158,17 @@ A temporary deployment is available at:
 
 Master's thesis — *Un sistema para anotar términos en corpus multilingües* (*A system for annotating terms in multilingual corpora*), Universidad Politécnica de Madrid (UPM), 2022. The thesis itself is written in Spanish.
 Full manuscript: [https://oa.upm.es/72734/](https://oa.upm.es/72734/)
+
+---
+
+## License
+
+This work is licensed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License (CC BY-NC-ND 4.0)**.
+
+You are free to **share** (copy and redistribute) the material in any medium or format, under the following terms:
+
+- **Attribution** — You must give appropriate credit to the author (Laura González), provide a link to the license, and indicate if changes were made.
+- **NonCommercial** — You may not use the material for commercial purposes.
+- **NoDerivatives** — If you remix, transform, or build upon the material, you may not distribute the modified material.
+
+Full license text: [https://creativecommons.org/licenses/by-nc-nd/4.0/](https://creativecommons.org/licenses/by-nc-nd/4.0/) · See the [`LICENSE`](LICENSE) file for details.
